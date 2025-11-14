@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>装卸货场-现代</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<style>
+:root{
+  --theme:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  --radius:12px;
+  --gap:15px;
+  font-family:"Microsoft YaHei",sans-serif;
+}
+body{margin:0;height:100vh;display:flex;flex-direction:column;
+    background:var(--theme);color:#fff;} 
+header{padding:15px;font-size:22px;
+    text-align:center;background:rgba(0,0,0,.15);}
+.main{flex:1;display:flex;
+    padding:var(--gap);gap:var(--gap);overflow:hidden;}
+aside{width:280px;background:rgba(255,255,255,.95);
+    border-radius:var(--radius);padding:var(--gap);display:flex;
+    flex-direction:column;gap:10px;
+    box-shadow:0 4px 20px rgba(0,0,0,.2);}
+button{cursor:pointer;border:none;
+    border-radius:8px;padding:12px;font-size:16px;transition:.25s;}
+.btn-prim{background:#4CAF50;color:#fff;}
+.btn-prim:hover{background:#45a049;}
+.btn-warn{background:#ff9800;color:#fff;}
+.btn-warn:hover{background:#fb8c00;}
+.btn-danger{background:#f44336;color:#fff;}
+.btn-danger:hover{background:#e53935;}
+.content{flex:1;background:rgba(255,255,255,.95);
+    border-radius:var(--radius);padding:var(--gap);
+    color:#333;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    position:relative;
+    box-shadow:0 4px 20px rgba(0,0,0,.2);}
+.hidden{display:none !important;}
+h2{margin:0 0 15px;text-align:center;}
+textarea{width:100%;height:120px;
+    resize:none;padding:8px;border:1px solid #ccc;
+    border-radius:var(--radius);}
+input[type=file]{display:none;}
+.list{max-height:180px;overflow:auto;border:1px solid #ddd;
+    border-radius:var(--radius);padding:5px;margin:5px 0;}
+.list div{display:flex;justify-content:space-between;
+    align-items:center;padding:4px 6px;border-bottom:1px solid #eee;}
+.list div:last-child{border:none}
+.big{font-size:56px;font-weight:bold;margin:15px 0;}
+.timer-controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.timer-input{display:flex;gap:8px;align-items:center;}
+.timer-input input{width:60px;padding:6px;
+    border:1px solid #ccc;border-radius:5px;text-align:center;}
+
+/* === 快捷工具分类 === */
+.url-cols{width:100%;max-width:720px;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:var(--gap);}
+.url-col{background:rgba(255,255,255,.9);
+    border-radius:var(--radius);padding:12px;}
+.url-col h4{margin:0 0 10px;color:#555;}
+.url-col button{width:100%;margin-bottom:8px;
+    background:#2196F3;color:#fff;}
+.url-col button:hover{background:#0b7dda;}
+</style>
+</head>
+<body>
+<header>装卸货场-现代</header>
+<div class="main">
+  <aside>
+    <button class="btn-prim" onclick="show('roll')">抽卡(点名)</button>
+    <button class="btn-warn" onclick="show('alarm')">闹钟</button>
+    <button class="btn-prim" onclick="show('timer')">鸡屎器</button>
+    <button class="btn-prim" onclick="show('urls')">学科工具</button>
+    <button class="btn-danger" onclick="clearAll()">你不许点</button>
+  </aside>
+
+  <div class="content">
+    <!-- 1. 点名 -->
+    <div id="roll" class="panel">
+      <h2>成都七中同款摇号</h2>
+      <textarea id="stuInput" placeholder="粘贴或输入姓名，用逗号/换行分隔"></textarea>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button class="btn-prim" onclick="importNames()">导入名单</button>
+        <button class="btn-prim" onclick="addOne()">单条添加</button>
+        <button class="btn-warn" onclick="downloadList()">下载名单</button>
+        <label for="uploadFile" class="btn-warn" style="padding:12px;border-radius:8px;">上传名单</label>
+        <input type="file" id="uploadFile" accept=".txt,.csv" onchange="uploadList(this)">
+      </div>
+      <div class="list" id="stuList"></div>
+      <div id="picked" class="big" style="color:#4CAF50;">抽一个！</div>
+      <button class="btn-prim" style="font-size:20px;padding:15px 30px;" onclick="startRoll()">抽卡来</button>
+    </div>
+
+    <!-- 2. 闹钟 -->
+    <div id="alarm" class="panel hidden">
+      <h2>闹钟</h2>
+      <div style="font-size:52px;font-weight:bold;" id="clock">00:00:00</div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <input type="time" id="alarmTime">
+        <input type="text" id="alarmName" placeholder="闹钟名称（可选）">
+        <button class="btn-prim" onclick="addAlarm()">添加</button>
+      </div>
+      <div class="list" id="alarmList"></div>
+    </div>
+
+    <!-- 3. 计时器 -->
+    <div id="timer" class="panel hidden">
+      <h2>计时器</h2>
+      <div class="big" id="timerDisplay">00:00:00</div>
+      <div class="timer-input">
+        <label>分钟<input type="number" id="min" min="0" max="99" value="5"></label>
+        <label>秒钟<input type="number" id="sec" min="0" max="59" value="0"></label>
+        <button class="btn-prim" onclick="setCountdown()">应用鸡屎</button>
+      </div>
+      <div class="timer-controls">
+        <button class="btn-prim" onclick="startTimer()">GO!/等一下！</button>
+        <button class="btn-warn" onclick="pauseTimer()">停！</button>
+        <button class="btn-danger" onclick="resetTimer()">重新来</button>
+        <button class="btn-prim" onclick="switchMode()"><span id="modeText">切换到正鸡屎</span></button>
+      </div>
+    </div>
+
+    <!-- 4. 快捷工具 -->
+    <div id="urls" class="panel hidden">
+      <h2>看看有啥能用的</h2>
+      <div class="url-cols">
+        <div class="url-col">
+          <h4>AI</h4>
+          <button onclick="openUrl('https://www.doubao.com/chat')">唐包</button>
+          <button onclick="openUrl('https://kimi.moonshot.cn')">Kimi</button>
+          <button onclick="openUrl('https://tongyi.aliyun.com/qianwen')">通义</button>
+          <button onclick="openUrl('https://deepseek.com')">DeepSick</button>
+        </div>
+        <div class="url-col">
+          <h4>语文</h4>
+          <button onclick="openUrl('https://www.zidian.com.cn/ci')">词典</button>
+          <button onclick="openUrl('https://hanyucidian.org/gudai-hanyu-da-cidian')">古汉语词典</button>
+          <button onclick="openUrl('https://www.gushiwen.cn/')">古诗文工具</button>
+        </div>
+        <div class="url-col">
+          <h4>数学</h4>
+          <button onclick="openUrl('https://www.desmos.com/calculator')">Desmos</button>
+          <button onclick="openUrl('https://www.geogebra.org/graphing')">GeoGebra</button>
+          <button onclick="openUrl('https://calculator.advernesia.com/zh/')">寄算器</button>
+        </div>
+        <div class="url-col">
+          <h4>英语</h4>
+          <button onclick="openUrl('https://dict.cn')">词海</button>
+          <button onclick="openUrl('https://paper.i21st.cn/')">21世纪报纸工具</button>
+        </div>
+        <div class="url-col">
+          <h4>不知道</h4>
+          <button onclick="openUrl('https://wl-app.nobook.com/')">牛逼物理实验室</button>
+          <button onclick="openUrl('https://hx-app.nobook.com/')">牛逼化学实验室</button>
+        </div>
+        <div class="url-col">
+          <h4>点击输入文本</h4>
+          <button onclick="openUrl('https://wxyz.fuulea.com/')">辅立课</button>
+          <button onclick="openUrl('https://ys.mihoyo.com/')">原神</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====== 通用 ====== */
+const panels=document.querySelectorAll('.panel');
+function show(id)
+{
+    panels.forEach(p=>p.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+}
+function clearAll()
+{
+    if(confirm('都说了不让你点'))
+    {
+        localStorage.clear();
+        location.reload();
+    }
+}
+function openUrl(u)
+{
+    window.open(u,'_blank');
+}
+
+/* ====== 点名 ===== */
+let stuArr=[];
+function saveStu()
+{
+    localStorage.setItem('stulist',JSON.stringify(stuArr));
+}
+function loadStu()
+{
+    const s=localStorage.getItem('stulist');
+    if(s)
+    {
+        stuArr=JSON.parse(s);
+        renderStu();
+    }
+}
+function importNames()
+{
+    const v=document.getElementById('stuInput').value;
+    if(!v.trim())return alert('告诉我姓名');
+    const arr=v.split(/[,，\n\r]+/).map(n=>n.trim()).filter(n=>n);
+  stuArr=[...new Set([...stuArr,...arr])];
+  saveStu();renderStu();
+  document.getElementById('stuInput').value='';
+}
+function addOne()
+{
+    const n=prompt('告诉我姓名：');
+    if(!n)return;
+    stuArr.push(n);
+    saveStu();
+    renderStu();
+}
+function delStu(i)
+{
+    stuArr.splice(i,1);
+    saveStu();
+    renderStu();
+}
+function renderStu()
+{
+    const box=document.getElementById('stuList');
+    box.innerHTML='';
+    stuArr.forEach
+    (
+      (n,i)=>box.insertAdjacentHTML
+      (
+    'beforeend',
+    `<div><span>${n}</span><button class="btn-danger" onclick="delStu(${i})">删</button></div>`
+      )
+    );
+}
+function downloadList(){
+  if(!stuArr.length)return alert('啥也没有');
+  const blob=new Blob([stuArr.join('\n')],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='学生名单.txt';
+  a.click();
+}
+function uploadList(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{stuArr=[...new Set(e.target.result.split(/\r?\n/).map(n=>n.trim()).filter(n=>n))];
+    saveStu();renderStu();};
+  r.readAsText(f);
+}
+
+let rollHistory = [];
+const MAX_HISTORY = 5;
+function startRoll() 
+{
+  if (!stuArr.length) return alert('那也没名让我点啊');
+  const el = document.getElementById('picked');
+  let c = 0;
+  const t = setInterval(() => 
+  {
+    const available = stuArr.filter(name => !rollHistory.includes(name));
+    const candidates = available.length > 0 ? available : stuArr;
+    el.textContent = candidates[Math.floor(Math.random() * candidates.length)];
+    if (++c > 20) 
+    {
+      clearInterval(t);
+      const result = el.textContent;
+      el.textContent = '颗秒😘：' + result;
+      rollHistory.push(result);
+      if (rollHistory.length > MAX_HISTORY) 
+      {
+        rollHistory.shift();
+      }
+    }
+  }, 100);
+}
+
+
+/* ====== 闹钟 ===== */
+let alarms=JSON.parse(localStorage.getItem('alarms')||'[]');
+function saveAlarm(){localStorage.setItem('alarms',JSON.stringify(alarms));}
+function addAlarm(){
+  const time=document.getElementById('alarmTime').value;
+  const name=document.getElementById('alarmName').value||time;
+  if(!time)return alert('几点几分...');
+  alarms.push({time,name,id:Date.now()});
+  saveAlarm();renderAlarm();
+  document.getElementById('alarmTime').value='';document.getElementById('alarmName').value='';
+}
+function delAlarm(id){alarms=alarms.filter(a=>a.id!==id);saveAlarm();renderAlarm();}
+function renderAlarm(){
+  const box=document.getElementById('alarmList');
+  box.innerHTML=alarms.map(
+    a=>`<div><span>${a.name}</span><button class="btn-danger" onclick="delAlarm(${a.id})">删</button></div>`
+    ).join('');
+}
+function checkAlarm(){
+  const now=new Date();
+  const t=now.toTimeString().slice(0,5);
+  alarms.forEach(a=>{if(a.time===t){alert(`⏰oi!${a.name}`);delAlarm(a.id);}});
+}
+function updateClock()
+{
+    const n=new Date();
+    document.getElementById('clock').textContent=n.toLocaleTimeString('zh-CN',{hour12:false});
+    checkAlarm();
+}
+
+/* ====== 计时器 ===== */
+let timerMode='down',timerSec=0,timerInterval=null,timerRunning=false;
+function switchMode(){
+  timerMode=timerMode==='down'?'up':'down';
+  document.getElementById('modeText').textContent=timerMode==='down'?'切换到正鸡屎':'切换到倒鸡屎';
+  resetTimer();
+}
+function setCountdown(){
+  const m=parseInt(document.getElementById('min').value)||0;
+  const s=parseInt(document.getElementById('sec').value)||0;
+  timerSec=m*60+s;
+  renderTimer();
+}
+function renderTimer(){
+  const h=String(Math.floor(timerSec/3600)).padStart(2,'0');
+  const m=String(Math.floor(timerSec%3600/60)).padStart(2,'0');
+  const s=String(timerSec%60).padStart(2,'0');
+  document.getElementById('timerDisplay').textContent=`${h}:${m}:${s}`;
+}
+function startTimer(){
+  if(timerRunning)return;
+  timerRunning=true;
+  timerInterval=setInterval(()=>{
+    if(timerMode==='down')
+    {
+        timerSec--;
+        if(timerSec<=0)
+        {
+            clearInterval(timerInterval);
+            timerRunning=false;
+            alert('倒鸡屎结束！');
+            timerSec=0;
+        }
+    }
+    else{timerSec++;}
+    renderTimer();
+  },1000);
+}
+function pauseTimer(){clearInterval(timerInterval);timerRunning=false;}
+function resetTimer(){clearInterval(timerInterval);timerRunning=false;timerSec=0;renderTimer();}
+
+/* ====== 初始化 ===== */
+loadStu();renderAlarm();renderTimer();setInterval(updateClock,1000);
+</script>
+</body>
+</html>
